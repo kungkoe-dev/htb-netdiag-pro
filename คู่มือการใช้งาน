@@ -1,0 +1,15 @@
+agy --mode plan -c
+ผมอัปเดตโค้ดและเพิ่มระบบ Interactive Menu ลงใน netdiag.py พร้อมทดสอบการท​ำงานเรียบร้อยแล้วครับ
+  (ดูสรุปรายละเอียดทั้งหมดได้ที่ walkthrough.md)
+  ตอนนี้คุณสามารถรันค​ำสั่ง ./netdiag.py ใน Terminal เพื่อเปิดหน้าเมนูเลือกตรวจเช็กได้เลย (หรือใช้ ./netdiag.py --
+  "มีคอมพิวเตอร์เครื่องไหนในวงแย่งไอพีกันอยู่บ้าง (Network-wide IP Conflict Scanner)" ครับ
+
+# เปิดหน้าเมนูหลักแบบ Interactive (มีครบ 15 เมนู)
+    ./netdiag.py
+
+    # รันเรดาร์สแกนชื่อเครื่อง & ยี่ห้ออุปกรณ์ทั้งวงแลน (เมนู 11)
+    ./netdiag.py --mode recon -i wlp4s0
+
+    # รันวัดความเร็วทราฟฟิกสด & ตรวจจับ Broadcast Storm (เมนู 12)
+    ./netdiag.py --mode traffic -i wlp4s0
+
