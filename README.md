@@ -49,19 +49,22 @@
 ## 🚀 การติดตั้งและใช้งาน (Quick Start)
 
 ```bash
-# 1. ติดตั้งไลบรารีแสดงผล Terminal UI
-pip install -r requirements.txt
+# 1. รันสคริปต์ติดตั้งอัตโนมัติ (สร้างไอคอนหน้า Desktop + คำสั่งลัด htb-netdiag + ลงไลบรารี)
+chmod +x install.sh && ./install.sh
 
-# 2. เปิดหน้าเมนูหลักแบบ Interactive (มีครบ 15 เมนู)
-./netdiag.py
+# 2. เปิดใช้งานได้ 3 วิธี:
+#    - ดับเบิลคลิกไอคอน "HTB NetDiag Pro" บนหน้า Desktop (คลิกขวาเพื่อเลือกโหมดลัด / sudo ได้)
+#    - หรือพิมพ์คำสั่งลัดจาก Terminal ที่ไหนก็ได้:
+htb-netdiag
 
 # 3. ตัวอย่างรันโหมดเฉพาะเจาะจงผ่าน CLI
-./netdiag.py --mode freeip -i wlp4s0            # เช็กรายการ IP ว่าง & โซนนอกช่วง DHCP
-./netdiag.py --mode recon -i wlp4s0             # เรดาร์สแกนชื่อเครื่อง & ยี่ห้ออุปกรณ์ทั้งวงแลน
-./netdiag.py --mode conflict -i wlp4s0          # เช็กไอพีเต็ม & คอมพิวเตอร์แย่งไอพีกัน
-./netdiag.py --mode traffic -i wlp4s0           # วัดความเร็วทราฟฟิกสด & จับ Broadcast Storm
-./netdiag.py --mode target --target 10.8.1.254  # สแกนพอร์ตและดึงข้อมูล Server/Printer เชิงลึก
-./netdiag.py --watch                            # โหมดเฝ้าระวังสายแลนอัตโนมัติเมื่อเสียบสาย
+htb-netdiag --mode freeip -i wlp4s0            # เช็กรายการ IP ว่าง & โซนนอกช่วง DHCP
+htb-netdiag --mode recon -i wlp4s0             # เรดาร์สแกนชื่อเครื่อง & ยี่ห้ออุปกรณ์ทั้งวงแลน
+htb-netdiag --mode wifi -i wlp4s0              # วิเคราะห์คลื่น Wi-Fi, ช่องสัญญาณชน & Mesh Roaming
+htb-netdiag --mode dns -i wlp4s0               # วัดความเร็ว DNS เทียบ Cloudflare/Google & จับ Hijack
+htb-netdiag --mode traffic -i wlp4s0           # วัดความเร็วทราฟฟิกสด & จับ Broadcast Storm
+htb-netdiag --mode target --target 10.8.1.254  # สแกนพอร์ตและดึงข้อมูล Server/Printer เชิงลึก
+htb-netdiag --watch                            # โหมดเฝ้าระวังสายแลนอัตโนมัติเมื่อเสียบสาย
 ```
 
 ---

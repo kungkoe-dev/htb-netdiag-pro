@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#0d2238"/>
+      <stop offset="100%" stop-color="#050b14"/>
+    </radialGradient>
+    <linearGradient id="neonGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9fef00"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <linearGradient id="sweepGrad" x1="50%" y1="50%" x2="100%" y2="10%">
+      <stop offset="0%" stop-color="#9fef00" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#00e5ff" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer rounded cyber badge -->
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#bgGrad)" stroke="url(#neonGreen)" stroke-width="3.5"/>
+
+  <!-- Radar rings -->
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#1e4d6b" stroke-width="1.8" stroke-dasharray="4 3"/>
+  <circle cx="64" cy="64" r="28" fill="none" stroke="#246a8c" stroke-width="1.8"/>
+  <circle cx="64" cy="64" r="14" fill="none" stroke="#2c8ab0" stroke-width="1.8"/>
+
+  <!-- Crosshairs -->
+  <line x1="20" y1="64" x2="108" y2="64" stroke="#173a52" stroke-width="1.5"/>
+  <line x1="64" y1="20" x2="64" y2="108" stroke="#173a52" stroke-width="1.5"/>
+
+  <!-- Radar sweep sector -->
+  <path d="M 64 64 L 64 22 A 42 42 0 0 1 101 44 Z" fill="url(#sweepGrad)"/>
+  <line x1="64" y1="64" x2="99" y2="43" stroke="#9fef00" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Network links -->
+  <line x1="64" y1="64" x2="40" y2="42" stroke="#00e5ff" stroke-width="2" opacity="0.8"/>
+  <line x1="64" y1="64" x2="90" y2="82" stroke="#9fef00" stroke-width="2" opacity="0.8"/>
+  <line x1="64" y1="64" x2="36" y2="86" stroke="#00e5ff" stroke-width="2" opacity="0.8"/>
+
+  <!-- Network nodes -->
+  <circle cx="40" cy="42" r="5" fill="#00e5ff" stroke="#050b14" stroke-width="1.5"/>
+  <circle cx="90" cy="82" r="5.5" fill="#9fef00" stroke="#050b14" stroke-width="1.5"/>
+  <circle cx="36" cy="86" r="4.5" fill="#00e5ff" stroke="#050b14" stroke-width="1.5"/>
+  <circle cx="84" cy="38" r="4" fill="#ffbe0b"/>
+
+  <!-- Center core node -->
+  <circle cx="64" cy="64" r="7.5" fill="#9fef00" stroke="#050b14" stroke-width="2"/>
+  <circle cx="64" cy="64" r="3" fill="#050b14"/>
+</svg>
