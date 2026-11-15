@@ -8,9 +8,10 @@ __pycache__/
 venv/
 env/
 
-# Local network diagnostic reports (prevent internal network data leaks)
+# Local network diagnostic reports & baselines (prevent internal network data leaks)
 reports/*.md
 reports/*.json
+reports/baselines/
 !reports/.gitkeep
 
 # IDE / OS files

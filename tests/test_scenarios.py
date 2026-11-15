@@ -345,6 +345,123 @@ class TestNetworkScenarios(unittest.TestCase):
             self.assertEqual(rep.overall_status, CheckStatus.FAIL)
             self.assertTrue(any("Broadcast/Multicast พุ่งสูงผิดปกติ" in rc for rc in rep.root_causes))
 
+    def test_scenario_14_wifi_sticky_client_and_roaming(self) -> None:
+        """จำลองสถานการณ์ที่ 14: Wi-Fi สัญญาณปานกลางและพบ AP ตัวอื่นในชื่อ Mesh เดียวกันที่แรงกว่า (Sticky Client)"""
+        from netdiag.wifi_analyzer import run_wifi_diagnostics
+
+        rep = InterfaceDiagReport(interface="wlp4s0", if_type="wifi")
+        with patch("netdiag.wifi_analyzer.classify_interface", return_value="wifi"), patch(
+            "netdiag.wifi_analyzer.get_iw_link_info"
+        ) as mock_iw, patch("netdiag.wifi_analyzer.scan_nearby_wifi_aps") as mock_aps:
+            mock_iw.return_value = {
+                "connected": True,
+                "bssid": "f4:92:bf:18:a2:fc",
+                "ssid": "BUH-MeshWIFI",
+                "freq_mhz": 5500,
+                "band": "5 GHz",
+                "signal_dbm": -72,
+                "rx_bitrate": "120.0 MBit/s 80MHz",
+                "tx_bitrate": "90.0 MBit/s",
+                "channel_width": "80MHz",
+            }
+            mock_aps.return_value = [
+                {
+                    "in_use": True,
+                    "ssid": "BUH-MeshWIFI",
+                    "bssid": "f4:92:bf:18:a2:fc",
+                    "vendor": "Ubiquiti",
+                    "chan": 100,
+                    "freq": "5500 MHz",
+                    "signal_pct": 55,
+                    "security": "WPA2",
+                },
+                {
+                    "in_use": False,
+                    "ssid": "BUH-MeshWIFI",
+                    "bssid": "f4:92:bf:17:a2:fc",
+                    "vendor": "Ubiquiti",
+                    "chan": 11,
+                    "freq": "2462 MHz",
+                    "signal_pct": 85,
+                    "security": "WPA2",
+                },
+            ]
+            run_wifi_diagnostics(rep)
+            synthesize_root_cause(rep, mode="wifi")
+            self.assertEqual(rep.overall_status, CheckStatus.WARN)
+            self.assertTrue(any("Sticky Client" in rc for rc in rep.root_causes))
+
+    def test_scenario_15_dns_benchmark_and_hijack(self) -> None:
+        """จำลองสถานการณ์ที่ 15: ตรวจจับ DNS Hijacking (NXDOMAIN Redirect)"""
+        from netdiag.dns_analyzer import run_dns_benchmark_and_audit
+
+        rep = InterfaceDiagReport(interface="wlp4s0", if_type="wifi")
+        rep.raw_context["nmcli"] = {"IP4.DNS[1]": "10.8.1.254"}
+
+        def fake_dig(server_ip: str, domain: str, qtype: str = "A", timeout_sec: int = 3):
+            if "nonexistent" in domain:
+                return {"reachable": True, "query_ms": 5.0, "answers": ["192.0.2.1"], "status": "NOERROR"}
+            return {"reachable": True, "query_ms": 4.2, "answers": ["142.250.199.14"], "status": "NOERROR"}
+
+        with patch("netdiag.dns_analyzer.query_dns_with_dig", side_effect=fake_dig), patch(
+            "netdiag.dns_analyzer.shutil.which", return_value=None
+        ):
+            run_dns_benchmark_and_audit(rep)
+            synthesize_root_cause(rep, mode="dns")
+            self.assertEqual(rep.overall_status, CheckStatus.WARN)
+            self.assertTrue(any("NXDOMAIN Hijacking" in rc for rc in rep.root_causes))
+
+    def test_scenario_16_snmp_switch_port_errors(self) -> None:
+        """จำลองสถานการณ์ที่ 16: อ่าน SNMP จาก Switch แล้วพบพอร์ตที่มี In/Out Errors"""
+        from netdiag.snmp_inspector import run_snmp_inspector
+
+        rep = InterfaceDiagReport(interface="enp0s31f6", if_type="ethernet")
+        with patch("netdiag.snmp_inspector.shutil.which", return_value="/usr/bin/snmpwalk"), patch(
+            "netdiag.snmp_inspector.inspect_snmp_device"
+        ) as mock_snmp:
+            mock_snmp.return_value = {
+                "reachable": True,
+                "target_ip": "10.8.70.1",
+                "community": "public",
+                "sys_name": "SW-FLOOR3-CORE",
+                "sys_descr": "Alcatel-Lucent OS6860",
+                "sys_uptime": "45 days",
+                "ports": [
+                    {"index": 1, "name": "1/1/1", "status": "UP", "speed_mbps": 1000, "in_errors": 12, "out_errors": 0}
+                ],
+            }
+            run_snmp_inspector(rep, target_host="10.8.70.1", community="public")
+            synthesize_root_cause(rep, mode="snmp")
+            self.assertEqual(rep.overall_status, CheckStatus.WARN)
+            self.assertTrue(any("พบพอร์ตที่มี Error" in rc for rc in rep.root_causes))
+
+    def test_scenario_17_baseline_gateway_mac_changed(self) -> None:
+        """จำลองสถานการณ์ที่ 17: เทียบ Baseline แล้วพบ Gateway MAC เปลี่ยนและมีอุปกรณ์ใหม่เข้ามา"""
+        from netdiag.baseline_diff import compare_snapshots
+
+        baseline = {
+            "captured_at": "2026-11-14 09:00:00",
+            "gateway_mac": "94:24:e1:4c:97:c7",
+            "dns_servers": ["10.8.1.254"],
+            "dhcp_server": "10.8.1.253",
+            "hosts": {"10.8.70.1": {"macs": ["94:24:e1:4c:97:c7"], "vendor": "Alcatel-Lucent"}},
+        }
+        current = {
+            "captured_at": "2026-11-15 09:00:00",
+            "subnet": "10.8.70.0/24",
+            "gateway_mac": "aa:bb:cc:dd:ee:ff",
+            "dns_servers": ["10.8.1.254"],
+            "dhcp_server": "10.8.1.253",
+            "hosts": {
+                "10.8.70.1": {"macs": ["aa:bb:cc:dd:ee:ff"], "vendor": "Unknown"},
+                "10.8.70.99": {"macs": ["11:22:33:44:55:66"], "vendor": "TP-Link"},
+            },
+        }
+        diff = compare_snapshots(baseline, current)
+        self.assertTrue(diff["gw_mac_changed"])
+        self.assertEqual(len(diff["new_hosts"]), 1)
+        self.assertEqual(diff["new_hosts"][0]["ip"], "10.8.70.99")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

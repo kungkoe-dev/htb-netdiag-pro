@@ -569,6 +569,164 @@ def render_dhcp_audit_details(d_data: Dict[str, Any]) -> None:
     console.print(d_table)
 
 
+def render_wifi_details(w_data: Dict[str, Any]) -> None:
+    """แสดงแผงวิเคราะห์สัญญาณ Wi-Fi, ช่องสัญญาณชนกัน และรายชื่อ AP รอบข้าง"""
+    link = w_data["link"]
+    aps: List[Dict[str, Any]] = w_data.get("nearby_aps", [])
+    better = w_data.get("better_same_ssid", [])
+
+    info_text = (
+        f"📶 [bold]SSID ปัจจุบัน:[/bold] [cyan]{link['ssid']}[/cyan]   "
+        f"| 📡 [bold]คลื่นความถี่:[/bold] [yellow]{link['band']} (Channel {w_data['current_chan']}, {link['channel_width']})[/yellow]\n"
+        f"🏷️ [bold]AP BSSID:[/bold] {link['bssid']} ([yellow]{w_data['ap_vendor']}[/yellow])   "
+        f"| 📊 [bold]ความแรงสัญญาณ:[/bold] [bold green]{link['signal_dbm']} dBm ({w_data['current_sig_pct']}%)[/bold green]\n"
+        f"⚡ [bold]ความเร็ว Link (RX / TX):[/bold] {link['rx_bitrate']}  |  {link['tx_bitrate']}\n"
+        f"🔀 [bold]AP ชนช่องเดียวกัน (Co-Channel):[/bold] {w_data['co_channel_count']} ตัว   "
+        f"| 🏃 [bold]Mesh Roaming Status:[/bold] "
+        + (f"[bold yellow]⚠️ พบ AP ตัวที่แรงกว่า ({better[0]['signal_pct']}%)[/bold yellow]" if better else "[bold green]🟢 เกาะ AP ตัวที่ดีที่สุดแล้ว[/bold green]")
+    )
+    console.print(Panel(info_text, title="📶 วิเคราะห์คลื่น Wi-Fi & Mesh Roaming (Wi-Fi Radio Telemetry)", border_style="bright_cyan"))
+
+    if aps:
+        w_table = Table(
+            title=f"📡 รายการ Access Point รอบข้างที่ตรวจพบ (แสดง {len(aps)} อันดับแรงสุด)",
+            box=box.SIMPLE_HEAVY,
+            header_style="bold bright_white on dark_blue",
+            expand=True,
+            padding=(0, 1),
+        )
+        w_table.add_column("ใช้งาน", justify="center", overflow="fold")
+        w_table.add_column("SSID", style="bold white", overflow="fold")
+        w_table.add_column("BSSID & ยี่ห้อ AP", style="cyan", overflow="fold")
+        w_table.add_column("Ch", justify="right", style="yellow", overflow="fold")
+        w_table.add_column("สัญญาณ", justify="right", style="green", overflow="fold")
+        w_table.add_column("Security", overflow="fold")
+
+        for a in aps:
+            use_badge = "[bold bright_green]★ ใช้[/bold bright_green]" if a["in_use"] else "[dim]-[/dim]"
+            bssid_v = f"{a['bssid']} ({a['vendor']})"
+            w_table.add_row(use_badge, a["ssid"], bssid_v, str(a["chan"]), f"{a['signal_pct']}%", a["security"])
+        console.print(w_table)
+
+
+def render_dns_details(d_data: Dict[str, Any]) -> None:
+    """แสดงตารางเปรียบเทียบความเร็ว DNS และผลตรวจจับ DNS Hijacking"""
+    benches: List[Dict[str, Any]] = d_data.get("benchmarks", [])
+    b_table = Table(
+        title=f"⚡ ตารางเปรียบเทียบความเร็ว DNS Resolver (ทดสอบโดเมน {d_data['test_domain']})",
+        box=box.SIMPLE_HEAVY,
+        header_style="bold bright_white on dark_blue",
+        expand=True,
+        padding=(0, 1),
+    )
+    b_table.add_column("ผู้ให้บริการ DNS (Resolver)", style="bold white", overflow="fold")
+    b_table.add_column("IP Address", style="cyan", overflow="fold")
+    b_table.add_column("เวลาตอบกลับ", justify="right", overflow="fold")
+    b_table.add_column("สถานะ", justify="center", overflow="fold")
+    b_table.add_column("ตัวอย่างคำตอบ (A Record)", style="dim", overflow="fold")
+
+    for b in benches:
+        if not b["reachable"]:
+            b_table.add_row(b["label"], b["server"], "-", "[bold red]❌ TIMEOUT[/bold red]", "-")
+        else:
+            ms = b["query_ms"] or 0
+            ms_str = f"[bold green]{ms} ms[/bold green]" if ms < 60 else (f"[yellow]{ms} ms[/yellow]" if ms < 150 else f"[red]{ms} ms[/red]")
+            b_table.add_row(b["label"], b["server"], ms_str, f"[green]{b['status']}[/green]", b["sample_ip"])
+    console.print(b_table)
+
+
+def render_snmp_details(s_data: Dict[str, Any]) -> None:
+    """แสดงตารางข้อมูลอุปกรณ์และพอร์ต Switch/Router จากการอ่าน SNMP"""
+    if not s_data.get("reachable"):
+        return
+    info_text = (
+        f"🖧 [bold]ชื่ออุปกรณ์ (sysName):[/bold] [cyan]{s_data['sys_name']}[/cyan] ({s_data['target_ip']})   "
+        f"| ⏱️ [bold]Uptime:[/bold] [green]{s_data['sys_uptime']}[/green]\n"
+        f"📋 [bold]รุ่น/ระบบปฏิบัติการ (sysDescr):[/bold] {s_data['sys_descr']}"
+    )
+    console.print(Panel(info_text, title="🖧 ข้อมูลอุปกรณ์จาก SNMP (SNMP System Summary)", border_style="cyan"))
+
+    ports: List[Dict[str, Any]] = s_data.get("ports", [])
+    if ports:
+        s_table = Table(
+            title=f"🔌 ตารางสถานะพอร์ตบนอุปกรณ์ {s_data['sys_name']} (แสดงสูงสุด {len(ports)} พอร์ต)",
+            box=box.SIMPLE_HEAVY,
+            header_style="bold bright_white on dark_blue",
+            expand=True,
+            padding=(0, 1),
+        )
+        s_table.add_column("#", justify="right", style="dim", overflow="fold")
+        s_table.add_column("ชื่อพอร์ต (ifDescr)", style="bold white", overflow="fold")
+        s_table.add_column("สถานะ", justify="center", overflow="fold")
+        s_table.add_column("Speed", justify="right", style="cyan", overflow="fold")
+        s_table.add_column("In/Out Errors", justify="right", overflow="fold")
+
+        for p in ports:
+            st_badge = "[bold green]🟢 UP[/bold green]" if p["status"] == "UP" else "[dim]⚪ DOWN[/dim]"
+            err_total = p["in_errors"] + p["out_errors"]
+            err_str = f"[bold red]{p['in_errors']}/{p['out_errors']}[/bold red]" if err_total > 0 else "[green]0/0[/green]"
+            spd_str = f"{p['speed_mbps']} Mbps" if p["speed_mbps"] > 0 else "-"
+            s_table.add_row(str(p["index"]), p["name"], st_badge, spd_str, err_str)
+        console.print(s_table)
+
+
+def render_baseline_details(b_data: Dict[str, Any]) -> None:
+    """แสดงตารางเปรียบเทียบ Network Baseline กับสถานะปัจจุบัน"""
+    if b_data.get("mode") == "saved":
+        snap = b_data["snapshot"]
+        console.print(
+            Panel(
+                f"💾 [bold green]บันทึก Baseline ใหม่เรียบร้อยแล้ว[/bold green]\n"
+                f"• ไฟล์ที่บันทึก: [cyan]{b_data['path']}[/cyan]\n"
+                f"• เวลาที่บันทึก: {snap['captured_at']} | จำนวนเครื่องฐาน: [bold]{len(snap['hosts'])} เครื่อง[/bold]",
+                title="🛡️ Network Baseline Snapshot",
+                border_style="green",
+            )
+        )
+        return
+
+    diff = b_data.get("diff", {})
+    new_hosts: List[Dict[str, Any]] = diff.get("new_hosts", [])
+    missing_hosts: List[Dict[str, Any]] = diff.get("missing_hosts", [])
+    mac_changed: List[Dict[str, Any]] = diff.get("mac_changed_hosts", [])
+
+    if new_hosts or missing_hosts or mac_changed:
+        d_table = Table(
+            title=f"🛡️ ตารางสรุปความเปลี่ยนแปลงจาก Baseline ({diff['baseline_time']} → {diff['current_time']})",
+            box=box.SIMPLE_HEAVY,
+            header_style="bold bright_white on dark_blue",
+            expand=True,
+            padding=(0, 1),
+        )
+        d_table.add_column("ประเภทการเปลี่ยนแปลง", overflow="fold")
+        d_table.add_column("IP Address", style="bold white", overflow="fold")
+        d_table.add_column("MAC Address", style="cyan", overflow="fold")
+        d_table.add_column("ยี่ห้ออุปกรณ์ (Vendor)", style="yellow", overflow="fold")
+
+        for item in mac_changed:
+            d_table.add_row(
+                "[bold red]⚠️ MAC เปลี่ยน![/bold red]",
+                item["ip"],
+                f"{item['old_mac']} → {item['new_mac']}",
+                item["new_vendor"],
+            )
+        for item in new_hosts:
+            d_table.add_row(
+                "[bold bright_yellow]🆕 อุปกรณ์ใหม่[/bold bright_yellow]",
+                item["ip"],
+                ", ".join(item["macs"]) or "-",
+                item["vendor"],
+            )
+        for item in missing_hosts[:15]:
+            d_table.add_row(
+                "[dim]📴 ออฟไลน์/หายไป[/dim]",
+                item["ip"],
+                ", ".join(item["macs"]) or "-",
+                item["vendor"],
+            )
+        console.print(d_table)
+
+
 def render_report(report: InterfaceDiagReport) -> None:
     """แสดงผลการตรวจเช็กของแต่ละ Interface บน Terminal อย่างสวยงามและไม่ถูกบีบคอลัมน์"""
     status_color = {
@@ -630,6 +788,14 @@ def render_report(report: InterfaceDiagReport) -> None:
         render_target_scan_details(report.raw_context["target_scan"])
     if "dhcp_audit" in report.raw_context:
         render_dhcp_audit_details(report.raw_context["dhcp_audit"])
+    if "wifi_data" in report.raw_context:
+        render_wifi_details(report.raw_context["wifi_data"])
+    if "dns_data" in report.raw_context:
+        render_dns_details(report.raw_context["dns_data"])
+    if "snmp_data" in report.raw_context:
+        render_snmp_details(report.raw_context["snmp_data"])
+    if "baseline_data" in report.raw_context:
+        render_baseline_details(report.raw_context["baseline_data"])
 
     summary_lines: List[str] = []
     summary_lines.append("[bold underline]🔍 สรุปผลการวินิจฉัย (Root Cause Analysis):[/bold underline]")
@@ -759,6 +925,8 @@ def execute_diagnostics(
     target_host: Optional[str] = None,
     custom_ports: Optional[List[int]] = None,
     custom_dhcp_range: Optional[str] = None,
+    snmp_community: str = "public",
+    reset_baseline: bool = False,
 ) -> List[InterfaceDiagReport]:
     """รันการตรวจเช็กตามพอร์ตและโหมดที่กำหนด"""
     reports: List[InterfaceDiagReport] = []
@@ -772,6 +940,8 @@ def execute_diagnostics(
                 target_host=target_host,
                 custom_ports=custom_ports,
                 custom_dhcp_range=custom_dhcp_range,
+                snmp_community=snmp_community,
+                reset_baseline=reset_baseline,
             )
             reports.append(rep)
         render_report(rep)
@@ -820,11 +990,15 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
             "  [bold bright_magenta][9][/bold bright_magenta]  🕵️  [bold]ตรวจจับ Rogue DHCP & วิเคราะห์ DHCP Server เชิงลึก[/bold]   — เช็ก Router เถื่อนแจก IP ซ้อน, ดู DHCP Relay, Domain และอายุ Lease Time\n"
             "  [bold bright_green][10][/bold bright_green] 📋 [bold]เช็กรายการ IP ว่าง & โซนที่ไม่ถูกแจก DHCP (Free IP List)[/bold] — แสดง List เบอร์ IP ที่ว่างทั้งหมด และแนะนำเบอร์นอกช่วง DHCP สำหรับตั้ง Fix IP\n"
             "  [bold bright_green][11][/bold bright_green] 🛰️  [bold]เรดาร์สแกนชื่อเครื่อง & ยี่ห้ออุปกรณ์ทั้งวงแลน (HTB Cyber Recon)[/bold] — ผสาน fping + IEEE OUI + nbtscan + mDNS + dig ดึงชื่อเครื่องและยี่ห้อการ์ดแลน\n"
-            "  [bold bright_green][12][/bold bright_green] 📡 [bold]วัดความเร็วทราฟฟิกสด & จับลูปสวิตช์ (Live Traffic & Storm)[/bold] — วัดความเร็ว RX/TX Kbps, อัตราแพ็กเกจ/วินาที และตรวจจับ Broadcast Storm\n\n"
+            "  [bold bright_green][12][/bold bright_green] 📡 [bold]วัดความเร็วทราฟฟิกสด & จับลูปสวิตช์ (Live Traffic & Storm)[/bold] — วัดความเร็ว RX/TX Kbps, อัตราแพ็กเกจ/วินาที และตรวจจับ Broadcast Storm\n"
+            "  [bold bright_green][13][/bold bright_green] 📶 [bold]วิเคราะห์คลื่น Wi-Fi, ช่องสัญญาณชน & Mesh Roaming[/bold]      — เช็กความแรง dBm, AP ชนช่องเดียวกัน และอาการ Sticky Client\n"
+            "  [bold bright_green][14][/bold bright_green] ⚡ [bold]วัดความเร็ว DNS เทียบ 1.1.1.1/8.8.8.8 & จับ DNS Hijack[/bold] — ทดสอบความเร็ว DNS องค์กร, DoH และตรวจจับการแอบ Redirect DNS\n"
+            "  [bold bright_green][15][/bold bright_green] 🖧 [bold]เจาะลึกสถานะพอร์ต Switch/Router/Printer ผ่าน SNMP[/bold]       — อ่านรุ่น, Uptime, สถานะพอร์ต Up/Down และ Port Errors ด้วย snmpwalk\n"
+            "  [bold bright_green][16][/bold bright_green] 🛡️  [bold]บันทึก/เทียบ Baseline หาอุปกรณ์แปลกปลอมในวงแลน[/bold]        — จับอุปกรณ์ใหม่เข้าวงแลน, เครื่องหาย และ Gateway MAC เปลี่ยน (ARP Spoof)\n\n"
             "  [bold underline]หมวดเฝ้าระวังและจัดการรายงาน:[/bold underline]\n"
-            "  [bold cyan][13][/bold cyan] 👀 [bold]โหมดเฝ้าระวังสายแลนอัตโนมัติ (Watch Mode)[/bold]        — รอจังหวะเสียบ/ถอดสายแลน แล้วรันวิเคราะห์ให้อัตโนมัติทันที\n"
-            "  [bold cyan][14][/bold cyan] 🎯 [bold]เปลี่ยนพอร์ตที่ต้องการเช็ก (Select Port)[/bold]           — เลือกตรวจเฉพาะสายแลน (เช่น enp0s31f6), เฉพาะ Wi-Fi หรือทุกพอร์ต\n"
-            "  [bold cyan][15][/bold cyan] 📄 [bold]บันทึกรายงานผลล่าสุดเป็นไฟล์ (Save Report)[/bold]        — ส่งออกผลการตรวจล่าสุดเป็นไฟล์ Markdown (.md) และ JSON (.json)\n"
+            "  [bold cyan][17][/bold cyan] 👀 [bold]โหมดเฝ้าระวังสายแลนอัตโนมัติ (Watch Mode)[/bold]        — รอจังหวะเสียบ/ถอดสายแลน แล้วรันวิเคราะห์ให้อัตโนมัติทันที\n"
+            "  [bold cyan][18][/bold cyan] 🎯 [bold]เปลี่ยนพอร์ตที่ต้องการเช็ก (Select Port)[/bold]           — เลือกตรวจเฉพาะสายแลน (เช่น enp0s31f6), เฉพาะ Wi-Fi หรือทุกพอร์ต\n"
+            "  [bold cyan][19][/bold cyan] 📄 [bold]บันทึกรายงานผลล่าสุดเป็นไฟล์ (Save Report)[/bold]        — ส่งออกผลการตรวจล่าสุดเป็นไฟล์ Markdown (.md) และ JSON (.json)\n"
             "  [bold red][0][/bold red]  🚪 [bold]ออกจากโปรแกรม (Exit)[/bold]"
         )
         console.print(Panel(menu_text, title="📋 เลือกหัวข้อที่ต้องการตรวจสอบ", border_style="bright_cyan", padding=(1, 2)))
@@ -832,7 +1006,7 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
         try:
             choice = Prompt.ask(
                 "[bold yellow]👉 กรุณาเลือกหมายเลขเมนู[/bold yellow]",
-                choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"],
+                choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"],
                 default="1",
             )
         except (KeyboardInterrupt, EOFError):
@@ -888,10 +1062,39 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
         elif choice == "12":
             last_reports = execute_diagnostics(selected_targets, mode="traffic")
         elif choice == "13":
+            last_reports = execute_diagnostics(selected_targets, mode="wifi")
+        elif choice == "14":
+            last_reports = execute_diagnostics(selected_targets, mode="dns")
+        elif choice == "15":
+            s_host = Prompt.ask(
+                "🖧 [bold cyan]ระบุ IP ของ Switch / Router / Printer ที่ต้องการตรวจ SNMP (กด Enter เพื่อใช้ Gateway ปัจจุบัน)[/bold cyan]",
+                default="",
+            ).strip()
+            s_comm = Prompt.ask(
+                "🔑 [bold cyan]ระบุ SNMP Community String (กด Enter เพื่อใช้ 'public')[/bold cyan]",
+                default="public",
+            ).strip()
+            last_reports = execute_diagnostics(
+                selected_targets,
+                mode="snmp",
+                target_host=s_host or None,
+                snmp_community=s_comm or "public",
+            )
+        elif choice == "16":
+            b_action = Prompt.ask(
+                "🛡️ [bold cyan]พิมพ์ 'save' เพื่อบันทึก Baseline ใหม่ หรือกด Enter เพื่อเทียบสถานะปัจจุบันกับ Baseline เดิม[/bold cyan]",
+                default="diff",
+            ).strip().lower()
+            last_reports = execute_diagnostics(
+                selected_targets,
+                mode="baseline",
+                reset_baseline=(b_action == "save"),
+            )
+        elif choice == "17":
             eth_ifaces = [name for name, t in discover_interfaces(include_virtual=include_virtual) if t == "ethernet"]
             watch_if = selected_targets[0] if len(selected_targets) == 1 else (eth_ifaces[0] if eth_ifaces else "enp0s31f6")
             watch_cable_mode(watch_if)
-        elif choice == "14":
+        elif choice == "18":
             all_ifaces = [name for name, _ in discover_interfaces(include_virtual=include_virtual)]
             console.print("\n[bold cyan]เลือกพอร์ตที่ต้องการตรวจสอบ:[/bold cyan]")
             console.print("  [bold green][0][/bold green] ตรวจทุกพอร์ต (" + ", ".join(all_ifaces) + ")")
@@ -907,7 +1110,7 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
                 selected_targets = [all_ifaces[int(sub_choice) - 1]]
             console.print(f"[bold green]✅ ตั้งค่าพอร์ตเป้าหมายเป็น: {', '.join(selected_targets)}[/bold green]")
             continue
-        elif choice == "15":
+        elif choice == "19":
             if not last_reports:
                 last_reports = execute_diagnostics(selected_targets, mode="all", save_report=True)
             else:
@@ -947,8 +1150,22 @@ def main() -> int:
             "freeip",
             "recon",
             "traffic",
+            "wifi",
+            "dns",
+            "snmp",
+            "baseline",
         ],
-        help="โหมดตรวจเช็กโดยตรง: all, cable, switch, ip, internet, conflict, bottleneck, target, dhcp, freeip, recon, traffic",
+        help="โหมดตรวจเช็กโดยตรง: all, cable, switch, ip, internet, conflict, bottleneck, target, dhcp, freeip, recon, traffic, wifi, dns, snmp, baseline",
+    )
+    parser.add_argument(
+        "--snmp-community",
+        default="public",
+        help="ระบุ SNMP Community String สำหรับโหมด --mode snmp (ค่าเริ่มต้น: public)",
+    )
+    parser.add_argument(
+        "--save-baseline",
+        action="store_true",
+        help="บันทึก Baseline ใหม่สำหรับโหมด --mode baseline",
     )
     parser.add_argument(
         "--target",
@@ -1041,6 +1258,8 @@ def main() -> int:
         target_host=args.target,
         custom_ports=parse_ports_str(args.ports or ""),
         custom_dhcp_range=args.dhcp_range,
+        snmp_community=args.snmp_community,
+        reset_baseline=args.save_baseline,
     )
     return 0
 

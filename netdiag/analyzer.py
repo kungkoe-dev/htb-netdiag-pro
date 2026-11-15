@@ -16,7 +16,9 @@ Root Cause Engine & Full/Targeted OSI Diagnostic Pipeline
 from typing import List, Optional
 
 from . import CheckStatus, InterfaceDiagReport
+from .baseline_diff import run_baseline_and_diff_checks
 from .cyber_recon import run_cyber_recon_checks
+from .dns_analyzer import run_dns_benchmark_and_audit
 from .free_ip_finder import run_free_ip_and_dhcp_scope_checks
 from .ip_conflict_scanner import run_ip_exhaustion_and_conflict_checks
 from .layer1_physical import classify_interface, run_layer1_checks
@@ -25,8 +27,10 @@ from .layer3_network import run_layer3_checks
 from .layer4_7_internet import run_layer4_7_checks
 from .path_bottleneck import run_bottleneck_checks
 from .rogue_dhcp_checker import run_dhcp_audit_checks
+from .snmp_inspector import run_snmp_inspector
 from .target_port_checker import run_target_and_port_checks
 from .traffic_analyzer import run_traffic_and_storm_checks
+from .wifi_analyzer import run_wifi_diagnostics
 
 
 MODE_LABELS = {
@@ -42,6 +46,10 @@ MODE_LABELS = {
     "freeip": "เช็กรายการ IP ว่าง (Free IP List) & โซนปลอดภัยที่ไม่ถูกแจกด้วย DHCP (Static IP Zone)",
     "recon": "เรดาร์สแกนทรัพย์สินเครือข่าย ชื่อเครื่อง และยี่ห้ออุปกรณ์ (HTB Cyber Asset Radar)",
     "traffic": "วิเคราะห์ความเร็วทราฟฟิกสด & ตรวจจับ Broadcast Storm ในสายแลน (Live Traffic & Storm)",
+    "wifi": "วิเคราะห์คลื่น Wi-Fi, ช่องสัญญาณชนกัน & อาการไม่ยอม Roam (Wi-Fi & Mesh Analyzer)",
+    "dns": "วัดความเร็ว DNS เทียบ Cloudflare/Google & ตรวจจับ DNS Hijacking",
+    "snmp": "เจาะลึกสถานะพอร์ต Switch/Router/Printer ผ่าน SNMP (SNMP Deep Inspector)",
+    "baseline": "บันทึกและเทียบภาพจำเครือข่ายหาอุปกรณ์แปลกปลอม (Network Baseline & Diff)",
 }
 
 
@@ -87,6 +95,8 @@ def diagnose_interface(
     target_host: Optional[str] = None,
     custom_ports: Optional[List[int]] = None,
     custom_dhcp_range: Optional[str] = None,
+    snmp_community: str = "public",
+    reset_baseline: bool = False,
 ) -> InterfaceDiagReport:
     """รันการตรวจสอบสำหรับ Interface ตามโหมดที่เลือก"""
     if_type = classify_interface(iface)
@@ -131,6 +141,26 @@ def diagnose_interface(
 
     if mode == "traffic":
         run_traffic_and_storm_checks(report)
+        synthesize_root_cause(report, mode=mode)
+        return report
+
+    if mode == "wifi":
+        run_wifi_diagnostics(report)
+        synthesize_root_cause(report, mode=mode)
+        return report
+
+    if mode == "dns":
+        run_dns_benchmark_and_audit(report)
+        synthesize_root_cause(report, mode=mode)
+        return report
+
+    if mode == "snmp":
+        run_snmp_inspector(report, target_host=target_host, community=snmp_community)
+        synthesize_root_cause(report, mode=mode)
+        return report
+
+    if mode == "baseline":
+        run_baseline_and_diff_checks(report, reset_baseline=reset_baseline)
         synthesize_root_cause(report, mode=mode)
         return report
 
