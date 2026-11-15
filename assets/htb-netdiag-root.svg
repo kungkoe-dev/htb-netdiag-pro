@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <radialGradient id="bgGradRoot" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#361018"/>
+      <stop offset="100%" stop-color="#0b0508"/>
+    </radialGradient>
+    <linearGradient id="neonRedGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff3b5c"/>
+      <stop offset="100%" stop-color="#ffbe0b"/>
+    </linearGradient>
+    <linearGradient id="sweepGradRoot" x1="50%" y1="50%" x2="100%" y2="10%">
+      <stop offset="0%" stop-color="#ff3b5c" stop-opacity="0.48"/>
+      <stop offset="100%" stop-color="#ffbe0b" stop-opacity="0.06"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer rounded cyber badge -->
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="url(#bgGradRoot)" stroke="url(#neonRedGold)" stroke-width="3.5"/>
+
+  <!-- Radar rings -->
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#5e1f2d" stroke-width="1.8" stroke-dasharray="4 3"/>
+  <circle cx="64" cy="64" r="28" fill="none" stroke="#82293c" stroke-width="1.8"/>
+  <circle cx="64" cy="64" r="14" fill="none" stroke="#a6364d" stroke-width="1.8"/>
+
+  <!-- Crosshairs -->
+  <line x1="20" y1="64" x2="108" y2="64" stroke="#471622" stroke-width="1.5"/>
+  <line x1="64" y1="20" x2="64" y2="108" stroke="#471622" stroke-width="1.5"/>
+
+  <!-- Radar sweep sector -->
+  <path d="M 64 64 L 64 22 A 42 42 0 0 1 101 44 Z" fill="url(#sweepGradRoot)"/>
+  <line x1="64" y1="64" x2="99" y2="43" stroke="#ffbe0b" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Network links -->
+  <line x1="64" y1="64" x2="40" y2="42" stroke="#ffbe0b" stroke-width="2" opacity="0.85"/>
+  <line x1="64" y1="64" x2="90" y2="82" stroke="#ff3b5c" stroke-width="2" opacity="0.85"/>
+  <line x1="64" y1="64" x2="36" y2="86" stroke="#ffbe0b" stroke-width="2" opacity="0.85"/>
+
+  <!-- Network nodes -->
+  <circle cx="40" cy="42" r="5" fill="#ffbe0b" stroke="#0b0508" stroke-width="1.5"/>
+  <circle cx="90" cy="82" r="5.5" fill="#ff3b5c" stroke="#0b0508" stroke-width="1.5"/>
+  <circle cx="36" cy="86" r="4.5" fill="#ffbe0b" stroke="#0b0508" stroke-width="1.5"/>
+
+  <!-- Root '#' badge at center -->
+  <circle cx="64" cy="64" r="10" fill="#ff3b5c" stroke="#0b0508" stroke-width="2"/>
+  <text x="64" y="69" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="14" fill="#ffffff">#</text>
+</svg>

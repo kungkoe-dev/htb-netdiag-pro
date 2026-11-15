@@ -6,15 +6,22 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_NAME="HTB NetDiag Pro"
 DESKTOP_FILENAME="htb-netdiag-pro.desktop"
+DESKTOP_ROOT_FILENAME="htb-netdiag-pro-root.desktop"
 DESKTOP_DIR="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
 APPS_DIR="$HOME/.local/share/applications"
 LOCAL_BIN="$HOME/.local/bin"
 ICON_PATH="$APP_DIR/assets/htb-netdiag.svg"
+ICON_ROOT_PATH="$APP_DIR/assets/htb-netdiag-root.svg"
 LAUNCHER_PATH="$APP_DIR/launch-netdiag.sh"
 
 if [[ "${1:-}" == "--uninstall" ]]; then
   echo "🗑️ กำลังถอนการติดตั้งทางลัด $APP_NAME..."
-  rm -f "$DESKTOP_DIR/$DESKTOP_FILENAME" "$APPS_DIR/$DESKTOP_FILENAME" "$LOCAL_BIN/htb-netdiag"
+  rm -f \
+    "$DESKTOP_DIR/$DESKTOP_FILENAME" \
+    "$DESKTOP_DIR/$DESKTOP_ROOT_FILENAME" \
+    "$APPS_DIR/$DESKTOP_FILENAME" \
+    "$APPS_DIR/$DESKTOP_ROOT_FILENAME" \
+    "$LOCAL_BIN/htb-netdiag"
   echo "✅ ถอนการติดตั้งทางลัดเรียบร้อยแล้ว (โค้ดโปรแกรมใน $APP_DIR ยังอยู่ครบ)"
   exit 0
 fi
@@ -75,14 +82,35 @@ Name=👀 โหมดเฝ้าระวังสายแลนอัตโ�
 Exec=$LAUNCHER_PATH --watch
 "
 
+DESKTOP_ROOT_CONTENT="[Desktop Entry]
+Version=1.0
+Type=Application
+Name=HTB NetDiag Pro (Root)
+GenericName=Network Engineer Diagnostic HUD (sudo)
+Comment=Run HTB NetDiag Pro with sudo for LLDP/CDP, arp-scan, tshark & Rogue DHCP
+Exec=$LAUNCHER_PATH --sudo --menu
+Icon=$ICON_ROOT_PATH
+Terminal=false
+Categories=Network;System;Security;
+Keywords=network;diagnostic;sudo;root;lldp;arp-scan;tshark;htb;
+StartupNotify=true
+"
+
 printf "%s" "$DESKTOP_CONTENT" > "$DESKTOP_DIR/$DESKTOP_FILENAME"
 printf "%s" "$DESKTOP_CONTENT" > "$APPS_DIR/$DESKTOP_FILENAME"
+printf "%s" "$DESKTOP_ROOT_CONTENT" > "$DESKTOP_DIR/$DESKTOP_ROOT_FILENAME"
+printf "%s" "$DESKTOP_ROOT_CONTENT" > "$APPS_DIR/$DESKTOP_ROOT_FILENAME"
 
-chmod +x "$DESKTOP_DIR/$DESKTOP_FILENAME" "$APPS_DIR/$DESKTOP_FILENAME"
+chmod +x \
+  "$DESKTOP_DIR/$DESKTOP_FILENAME" \
+  "$DESKTOP_DIR/$DESKTOP_ROOT_FILENAME" \
+  "$APPS_DIR/$DESKTOP_FILENAME" \
+  "$APPS_DIR/$DESKTOP_ROOT_FILENAME"
 
-# Mark desktop shortcut as trusted on MATE/XFCE/GNOME/KDE if gio is available
+# Mark desktop shortcuts as trusted on MATE/XFCE/GNOME/KDE if gio is available
 if command -v gio >/dev/null 2>&1; then
   gio set "$DESKTOP_DIR/$DESKTOP_FILENAME" metadata::trusted true 2>/dev/null || true
+  gio set "$DESKTOP_DIR/$DESKTOP_ROOT_FILENAME" metadata::trusted true 2>/dev/null || true
 fi
 
 if command -v update-desktop-database >/dev/null 2>&1; then
@@ -91,8 +119,7 @@ fi
 
 echo ""
 echo "🎉 ติดตั้งเสร็จสมบูรณ์!"
-echo "   • ไอคอนหน้า Desktop : $DESKTOP_DIR/$DESKTOP_FILENAME"
-echo "   • เมนู Applications : $APPS_DIR/$DESKTOP_FILENAME"
-echo "   • คำสั่ง CLI ทั่วระบบ : htb-netdiag (ลองพิมพ์ 'htb-netdiag' ใน Terminal ได้เลย)"
-echo ""
-echo "💡 เคล็ดลับ: สามารถคลิกขวาที่ไอคอนหน้า Desktop เพื่อเข้าโหมดลัด (sudo / Cyber Recon / Free IP / Wi-Fi / Watch Mode) ได้ทันที!"
+echo "   • ไอคอนหน้า Desktop (ปกติ) : $DESKTOP_DIR/$DESKTOP_FILENAME"
+echo "   • ไอคอนหน้า Desktop (Root) : $DESKTOP_DIR/$DESKTOP_ROOT_FILENAME"
+echo "   • เมนู Applications        : $APPS_DIR/$DESKTOP_FILENAME"
+echo "   • คำสั่ง CLI ทั่วระบบ        : htb-netdiag (ลองพิมพ์ 'htb-netdiag' ใน Terminal ได้เลย)"
