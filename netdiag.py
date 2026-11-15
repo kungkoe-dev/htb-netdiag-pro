@@ -19,6 +19,10 @@ import dataclasses
 import datetime
 import json
 import os
+try:
+    import readline  # noqa: F401 - enables proper UTF-8 Backspace handling in Linux input()
+except ImportError:
+    pass
 import sys
 import time
 from pathlib import Path
@@ -42,6 +46,21 @@ from netdiag.layer1_physical import (
 from netdiag.layer3_network import get_ip_addresses
 
 console = Console()
+
+
+def safe_prompt(prompt_text: str, choices: Optional[List[str]] = None, default: str = "") -> str:
+    """รับค่าจากผู้ใช้ผ่าน Prompt.ask โดยป้องกัน UnicodeDecodeError เมื่อเผลอพิมพ์/ลบภาษาไทยใน Terminal"""
+    while True:
+        try:
+            kwargs: Dict[str, Any] = {"default": default}
+            if choices is not None:
+                kwargs["choices"] = choices
+            return Prompt.ask(prompt_text, **kwargs)
+        except UnicodeDecodeError:
+            console.print(
+                "[bold yellow]⚠️ ตรวจพบอักขระไม่สมบูรณ์ (อาจเผลอเปิดแป้นพิมพ์ภาษาไทย 'th' แล้วกดลบ) "
+                "— กรุณาเปลี่ยนเป็นภาษาอังกฤษ (EN) แล้วพิมพ์ใหม่อีกครั้งครับ[/bold yellow]"
+            )
 
 
 def get_htb_arsenal_hud_line() -> str:
@@ -1004,7 +1023,7 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
         console.print(Panel(menu_text, title="📋 เลือกหัวข้อที่ต้องการตรวจสอบ", border_style="bright_cyan", padding=(1, 2)))
 
         try:
-            choice = Prompt.ask(
+            choice = safe_prompt(
                 "[bold yellow]👉 กรุณาเลือกหมายเลขเมนู[/bold yellow]",
                 choices=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"],
                 default="1",
@@ -1031,11 +1050,11 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
         elif choice == "7":
             last_reports = execute_diagnostics(selected_targets, mode="bottleneck")
         elif choice == "8":
-            t_host = Prompt.ask(
+            t_host = safe_prompt(
                 "🎯 [bold cyan]ระบุ IP หรือชื่อ Hostname/Website ที่ต้องการทดสอบ (กด Enter เพื่อตรวจ Server/Gateway หลักอัตโนมัติ)[/bold cyan]",
                 default="",
             ).strip()
-            p_str = Prompt.ask(
+            p_str = safe_prompt(
                 "🛡️ [bold cyan]ระบุหมายเลขพอร์ตคั่นด้วยลูกน้ำ เช่น 80,443,9100 (กด Enter เพื่อสแกน 12 พอร์ตมาตรฐานองค์กร)[/bold cyan]",
                 default="",
             ).strip()
@@ -1048,7 +1067,7 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
         elif choice == "9":
             last_reports = execute_diagnostics(selected_targets, mode="dhcp")
         elif choice == "10":
-            d_range = Prompt.ask(
+            d_range = safe_prompt(
                 "📋 [bold cyan]หากทราบช่วง DHCP Pool ให้ระบุ เช่น 20-250 หรือ 10.8.70.20-10.8.70.250 (กด Enter เพื่อให้ระบบวิเคราะห์ขอบเขต DHCP อัตโนมัติ)[/bold cyan]",
                 default="",
             ).strip()
@@ -1066,11 +1085,11 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
         elif choice == "14":
             last_reports = execute_diagnostics(selected_targets, mode="dns")
         elif choice == "15":
-            s_host = Prompt.ask(
+            s_host = safe_prompt(
                 "🖧 [bold cyan]ระบุ IP ของ Switch / Router / Printer ที่ต้องการตรวจ SNMP (กด Enter เพื่อใช้ Gateway ปัจจุบัน)[/bold cyan]",
                 default="",
             ).strip()
-            s_comm = Prompt.ask(
+            s_comm = safe_prompt(
                 "🔑 [bold cyan]ระบุ SNMP Community String (กด Enter เพื่อใช้ 'public')[/bold cyan]",
                 default="public",
             ).strip()
@@ -1081,7 +1100,7 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
                 snmp_community=s_comm or "public",
             )
         elif choice == "16":
-            b_action = Prompt.ask(
+            b_action = safe_prompt(
                 "🛡️ [bold cyan]พิมพ์ 'save' เพื่อบันทึก Baseline ใหม่ หรือกด Enter เพื่อเทียบสถานะปัจจุบันกับ Baseline เดิม[/bold cyan]",
                 default="diff",
             ).strip().lower()
@@ -1103,7 +1122,7 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
                 console.print(f"  [bold green][{idx}][/bold green] เฉพาะพอร์ต [bold]{ifname}[/bold] ({iftype})")
 
             valid_sub = [str(i) for i in range(len(all_ifaces) + 1)]
-            sub_choice = Prompt.ask("เลือกหมายเลขพอร์ต", choices=valid_sub, default="1" if all_ifaces else "0")
+            sub_choice = safe_prompt("เลือกหมายเลขพอร์ต", choices=valid_sub, default="1" if all_ifaces else "0")
             if sub_choice == "0":
                 selected_targets = all_ifaces
             else:
@@ -1119,7 +1138,7 @@ def interactive_menu(initial_iface: Optional[str] = None, include_virtual: bool 
                 console.print(f"\n[bold green]📄 บันทึกรายงานผลเรียบร้อยแล้วที่:[/bold green] {md_file}")
 
         try:
-            Prompt.ask("\n[dim]กด Enter เพื่อกลับสู่เมนูหลัก (หรือ Ctrl+C เพื่อออก)[/dim]", default="")
+            safe_prompt("\n[dim]กด Enter เพื่อกลับสู่เมนูหลัก (หรือ Ctrl+C เพื่อออก)[/dim]", default="")
         except (KeyboardInterrupt, EOFError):
             console.print("\n[bold cyan]ออกจากโปรแกรมเรียบร้อยครับ[/bold cyan]")
             return 0

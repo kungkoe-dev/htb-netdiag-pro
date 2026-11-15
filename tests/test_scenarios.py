@@ -462,6 +462,25 @@ class TestNetworkScenarios(unittest.TestCase):
         self.assertEqual(len(diff["new_hosts"]), 1)
         self.assertEqual(diff["new_hosts"][0]["ip"], "10.8.70.99")
 
+    def test_scenario_18_safe_prompt_handles_unicode_decode_error(self) -> None:
+        """จำลองสถานการณ์ที่ 18: ดักจับ UnicodeDecodeError เมื่อเผลอกด Backspace ตัวอักษรภาษาไทยใน Prompt"""
+        import importlib.util
+        from pathlib import Path
+
+        spec = importlib.util.spec_from_file_location(
+            "netdiag_cli", Path(__file__).resolve().parent.parent / "netdiag.py"
+        )
+        netdiag_cli = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(netdiag_cli)
+
+        side_effects = [UnicodeDecodeError("utf-8", b"\xe0\xb8", 0, 2, "invalid continuation byte"), "0"]
+        with patch.object(netdiag_cli.Prompt, "ask", side_effect=side_effects), patch.object(
+            netdiag_cli.console, "print"
+        ):
+            res = netdiag_cli.safe_prompt("เลือกเมนู", choices=["0", "1"], default="1")
+            self.assertEqual(res, "0")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
